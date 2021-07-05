@@ -1,66 +1,40 @@
 package com.example.iconograph
 
 import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.os.Bundle
-import android.os.Build
-import android.provider.MediaStore
-import android.widget.Button
-import android.content.Context
 import android.app.Activity
 import android.app.AlertDialog
 import android.bluetooth.*
-import android.content.DialogInterface
-import androidx.core.content.ContextCompat
-import androidx.core.app.ActivityCompat
-import androidx.appcompat.app.AppCompatActivity
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
-import android.graphics.Color
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.os.Build
+import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
-
-private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
+import android.widget.Button
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 //class MainActivity : AppCompatActivity(), OnTouchListener, CvCameraViewListener2
 class MainActivity : AppCompatActivity()
 {
-    private final val MY_CAMERA_PERMISSION_CODE = 44
-    private final val CAMERA_REQUEST = 1888
-    private final val LOCATION_PERMISSION_REQUEST_CODE = 2
+    private val MY_CAMERA_PERMISSION_CODE = 44
+    private val CAMERA_REQUEST = 1888
+    private val LOCATION_PERMISSION_REQUEST_CODE = 2
+    private val ENABLE_BLUETOOTH_REQUEST_CODE = 1
 
-    // Bluetooth stuff
-    private var filters = ArrayList<ScanFilter>()
-
-    private val bluetoothAdapter: BluetoothAdapter by lazy {
-        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothManager.adapter
-    }
-    private val bleScanner by lazy {
-        bluetoothAdapter.bluetoothLeScanner
-    }
-    private val scanSettings = ScanSettings.Builder()
-        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-        .build()
-    private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
-            with(result.device) {
-                scanStop();
-                Log.i("BLE", "Found BLE device. Name: ${name ?: "Unnamed"}, address: $address")
-                bleConnect(result.device);
-            }
-        }
-    }
-    private var isScanning: Boolean = false
-
-    val isLocationPermissionGranted get() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+    private val isLocationPermissionGranted get() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
 
     var theImage: Bitmap? = null
     var photo: String? = null
 
+    // Set up the BLE Communications object. Lazy init after the MainActivity has been constructed.
+    private val comm: BleComm by lazy {
+        BleComm(this)
+    }
 
    //private lateinit var mOpenCvCameraView: CameraBridgeViewBase
    //private var mRgba: Mat? = null
@@ -83,12 +57,7 @@ class MainActivity : AppCompatActivity()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        filters.add(ScanFilter.Builder().setDeviceName("Nordic_UART").build())
-
-        var buttonBleScan = findViewById<Button>(R.id.buttonBleScan)
-        buttonBleScan.setOnClickListener{startBleScan()}
-
-        var mBtnPhoto = findViewById<Button>(R.id.buttonPhoto)
+        val mBtnPhoto = findViewById<Button>(R.id.buttonPhoto)
         mBtnPhoto.setOnClickListener {
             if (checkSelfPermission(Manifest.permission.CAMERA) !== PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.CAMERA), MY_CAMERA_PERMISSION_CODE)
@@ -103,18 +72,25 @@ class MainActivity : AppCompatActivity()
 //        mOpenCvCameraView.setCvCameraViewListener(this);
     }
 
+    // Update the status text box with the given string.
+    // TODO: Could it take a enunmerated type instead?
+    fun setStatusText(tx: String) {
+        val txStatus = findViewById<TextView>(R.id.textViewStatus)
+        txStatus.text = tx
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        when (requestCode) {
-            ENABLE_BLUETOOTH_REQUEST_CODE -> {
-                if (resultCode != Activity.RESULT_OK) {
-                    promptEnableBluetooth()
-                }
+        if(requestCode == ENABLE_BLUETOOTH_REQUEST_CODE) {
+            if (resultCode != Activity.RESULT_OK) {
+                promptEnableBluetooth()
+            } else {
+                comm.resume()
             }
         }
 
-        if (requestCode == CAMERA_REQUEST) {
+        if(requestCode == CAMERA_REQUEST) {
             val photo: Bitmap = data?.extras?.get("data") as Bitmap
             //imageView.setImageBitmap(photo)
         }
@@ -133,12 +109,14 @@ class MainActivity : AppCompatActivity()
 
     override fun onDestroy() {
         super.onDestroy()
+        comm.destroy()
 //        if (mOpenCvCameraView != null)
 //            mOpenCvCameraView.disableView()
     }
 
     override fun onPause() {
         super.onPause()
+        comm.pause()
 //        if(mOpenCvCameraView != null)
 //            mOpenCvCameraView.disableView()
     }
@@ -146,8 +124,17 @@ class MainActivity : AppCompatActivity()
     override fun onResume() {
         super.onResume()
 
-        if (!bluetoothAdapter.isEnabled) {
+        // Check Bluetooth is turned on.
+        if (!comm.isBluetoothEnabled()) {
             promptEnableBluetooth()
+
+        // Next check if we have location permissions (required to use BLE scanner)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isLocationPermissionGranted) {
+            requestLocationPermission()
+
+        // If we have all that, we can start scanning for our device.
+        } else {
+            comm.resume()
         }
 
 //        if (!OpenCVLoader.initDebug()) {
@@ -157,67 +144,16 @@ class MainActivity : AppCompatActivity()
 //        }
     }
 
+    // Check if Bluetooth is enabled and if not, ask the user if we can enable it.
     private fun promptEnableBluetooth() {
-        if (!bluetoothAdapter.isEnabled) {
+        if (!comm.isBluetoothEnabled()) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_REQUEST_CODE)
         }
     }
 
     fun Context.hasPermission(permissionType: String): Boolean {
-        return ContextCompat.checkSelfPermission(this, permissionType) ==
-                PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun scanStart() {
-        Log.w("BLE", "BLE scan start")
-        bleScanner.startScan(filters, scanSettings, scanCallback)
-        var buttonBleScan = findViewById<Button>(R.id.buttonBleScan);
-        buttonBleScan.setText("STOP BLE SCAN")
-        buttonBleScan.setBackgroundColor(Color.RED)
-        isScanning = true
-    }
-
-    private fun scanStop() {
-        Log.w("BLE","BLE scan stop")
-        bleScanner.stopScan(scanCallback)
-        var buttonBleScan = findViewById<Button>(R.id.buttonBleScan);
-        buttonBleScan.setText("BLE SCAN")
-        buttonBleScan.setBackgroundColor(Color.BLUE)
-        isScanning = false
-    }
-
-    private val gattCallback = object : BluetoothGattCallback() {
-        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            val deviceAddress = gatt.device.address
-            if(status == BluetoothGatt.GATT_SUCCESS) {
-                if(newState == BluetoothProfile.STATE_CONNECTED) {
-                    Log.w("BLE", "Connected to $deviceAddress")
-                } else {
-                    Log.w("BLE", "Disconnected from $deviceAddress")
-                    gatt.close()
-                }
-            } else {
-                Log.w("BLE","Error $status with connection to $deviceAddress")
-                gatt.close()
-            }
-        }
-    }
-
-    private fun bleConnect(device: BluetoothDevice)  {
-        Log.w("ScanResult","Connecting to $device.address")
-        device.connectGatt(this, false, gattCallback)
-    }
-
-    private fun startBleScan() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isLocationPermissionGranted) {
-            requestLocationPermission()
-        }
-        else if(isScanning) {
-            scanStop()
-        } else {
-            scanStart()
-        }
+        return ContextCompat.checkSelfPermission(this, permissionType) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestLocationPermission() {
@@ -235,45 +171,9 @@ class MainActivity : AppCompatActivity()
             )}
             var dlg: AlertDialog = dlgBuilder.create()
             dlg.show()
-            /*
-            dlg.setCancelable(false)
-                .setPositiveButton(android.R.string.ok, DialogInterface.OnClickListener{ dialog, id->recreate() })
-            var alert = dlg.create()
-            alert.setTitle("Location permission required")
-            alert.setIcon(R.mipmap.ic_launcher)
-            alert.show()
-
-
-            alert("Location permission required", "Need location permission to scan for BLE devices", android.R.string.ok, )
-            alert {
-                title = "Location permission required"
-                message = "Starting from Android M (6.0), the system requires apps to be granted " +
-                        "location access in order to scan for BLE devices."
-                isCancelable = false
-                positiveButton(android.R.string.ok) {
-                    requestPermission(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        LOCATION_PERMISSION_REQUEST_CODE
-                    )
-                }
-            }.show()*/
         }
     }
-/*
-    //fun alert(title:String, message:String, isCancelable:Boolean, positiveButton:(String)->Unit): AlertDialog {
-    fun alert(): Unit {
-        var dlg = AlertDialog.Builder(this)
-        var intent = Intent(this, MainActivity::class.java)
-        dlg.setMessage(message)
-            .setCancelable(isCancelable)
-            .setPositiveButton(positiveButton.)
-        //.setPositiveButton(positiveButton, DialogInterface.OnClickListener{dialog, id->recreate()})
-        var alert = dlg.create()
-        alert.setTitle(title)
-        alert.setIcon(R.mipmap.ic_launcher)
-        return alert // alert.show()
-    }
-*/
+
     private fun Activity.requestPermission(permission: String, requestCode: Int) {
         ActivityCompat.requestPermissions(this, arrayOf(permission), requestCode)
     }
@@ -289,7 +189,7 @@ class MainActivity : AppCompatActivity()
                 if (grantResults.firstOrNull() == PackageManager.PERMISSION_DENIED) {
                     requestLocationPermission()
                 } else {
-                    startBleScan()
+                    comm.resume() //btnBleScan()
                 }
             }
         }

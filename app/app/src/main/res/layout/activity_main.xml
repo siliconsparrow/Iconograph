@@ -37,11 +37,13 @@
             android:orientation="vertical"
             android:paddingHorizontal="10dp">
 
-            <Button
-                android:id="@+id/buttonBleScan"
+            <TextView
+                android:id="@+id/textViewStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="BLE Scan" />
+                android:text="Idle"
+                android:textAlignment="center"
+                android:textColor="@color/purple_500" />
 
             <Button
                 android:id="@+id/buttonPhoto"
