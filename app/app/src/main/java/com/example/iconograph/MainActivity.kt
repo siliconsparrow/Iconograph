@@ -5,18 +5,62 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Build
 import android.provider.MediaStore
 import android.widget.Button
+import android.content.Context
+import android.app.Activity
+import android.app.AlertDialog
+import android.bluetooth.*
+import android.content.DialogInterface
+import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import androidx.appcompat.app.AppCompatActivity
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
+import android.graphics.Color
+import android.util.Log
 
+private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
 
 //class MainActivity : AppCompatActivity(), OnTouchListener, CvCameraViewListener2
 class MainActivity : AppCompatActivity()
 {
     private final val MY_CAMERA_PERMISSION_CODE = 44
-    private val CAMERA_REQUEST = 1888
+    private final val CAMERA_REQUEST = 1888
+    private final val LOCATION_PERMISSION_REQUEST_CODE = 2
+
+    // Bluetooth stuff
+    private var filters = ArrayList<ScanFilter>()
+
+    private val bluetoothAdapter: BluetoothAdapter by lazy {
+        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothManager.adapter
+    }
+    private val bleScanner by lazy {
+        bluetoothAdapter.bluetoothLeScanner
+    }
+    private val scanSettings = ScanSettings.Builder()
+        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+        .build()
+    private val scanCallback = object : ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
+            with(result.device) {
+                scanStop();
+                Log.i("BLE", "Found BLE device. Name: ${name ?: "Unnamed"}, address: $address")
+                bleConnect(result.device);
+            }
+        }
+    }
+    private var isScanning: Boolean = false
+
+    val isLocationPermissionGranted get() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+
     var theImage: Bitmap? = null
     var photo: String? = null
+
 
    //private lateinit var mOpenCvCameraView: CameraBridgeViewBase
    //private var mRgba: Mat? = null
@@ -39,6 +83,11 @@ class MainActivity : AppCompatActivity()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        filters.add(ScanFilter.Builder().setDeviceName("Nordic_UART").build())
+
+        var buttonBleScan = findViewById<Button>(R.id.buttonBleScan)
+        buttonBleScan.setOnClickListener{startBleScan()}
+
         var mBtnPhoto = findViewById<Button>(R.id.buttonPhoto)
         mBtnPhoto.setOnClickListener {
             if (checkSelfPermission(Manifest.permission.CAMERA) !== PackageManager.PERMISSION_GRANTED) {
@@ -56,6 +105,15 @@ class MainActivity : AppCompatActivity()
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+
+        when (requestCode) {
+            ENABLE_BLUETOOTH_REQUEST_CODE -> {
+                if (resultCode != Activity.RESULT_OK) {
+                    promptEnableBluetooth()
+                }
+            }
+        }
+
         if (requestCode == CAMERA_REQUEST) {
             val photo: Bitmap = data?.extras?.get("data") as Bitmap
             //imageView.setImageBitmap(photo)
@@ -73,26 +131,170 @@ class MainActivity : AppCompatActivity()
 //        return Base64.encodeToString(imageArr, Base64.URL_SAFE)
 //    }
 
-//    override fun onDestroy() {
-//        super.onDestroy()
+    override fun onDestroy() {
+        super.onDestroy()
 //        if (mOpenCvCameraView != null)
 //            mOpenCvCameraView.disableView()
-//    }
-//    override fun onPause() {
-//        super.onPause()
+    }
+
+    override fun onPause() {
+        super.onPause()
 //        if(mOpenCvCameraView != null)
 //            mOpenCvCameraView.disableView()
-//    }
-//
-//    override fun onResume() {
-//        super.onResume()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (!bluetoothAdapter.isEnabled) {
+            promptEnableBluetooth()
+        }
+
 //        if (!OpenCVLoader.initDebug()) {
 //            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback)
 //        } else {
 //            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS)
 //        }
-//    }
-//
+    }
+
+    private fun promptEnableBluetooth() {
+        if (!bluetoothAdapter.isEnabled) {
+            val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+            startActivityForResult(enableBtIntent, ENABLE_BLUETOOTH_REQUEST_CODE)
+        }
+    }
+
+    fun Context.hasPermission(permissionType: String): Boolean {
+        return ContextCompat.checkSelfPermission(this, permissionType) ==
+                PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun scanStart() {
+        Log.w("BLE", "BLE scan start")
+        bleScanner.startScan(filters, scanSettings, scanCallback)
+        var buttonBleScan = findViewById<Button>(R.id.buttonBleScan);
+        buttonBleScan.setText("STOP BLE SCAN")
+        buttonBleScan.setBackgroundColor(Color.RED)
+        isScanning = true
+    }
+
+    private fun scanStop() {
+        Log.w("BLE","BLE scan stop")
+        bleScanner.stopScan(scanCallback)
+        var buttonBleScan = findViewById<Button>(R.id.buttonBleScan);
+        buttonBleScan.setText("BLE SCAN")
+        buttonBleScan.setBackgroundColor(Color.BLUE)
+        isScanning = false
+    }
+
+    private val gattCallback = object : BluetoothGattCallback() {
+        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            val deviceAddress = gatt.device.address
+            if(status == BluetoothGatt.GATT_SUCCESS) {
+                if(newState == BluetoothProfile.STATE_CONNECTED) {
+                    Log.w("BLE", "Connected to $deviceAddress")
+                } else {
+                    Log.w("BLE", "Disconnected from $deviceAddress")
+                    gatt.close()
+                }
+            } else {
+                Log.w("BLE","Error $status with connection to $deviceAddress")
+                gatt.close()
+            }
+        }
+    }
+
+    private fun bleConnect(device: BluetoothDevice)  {
+        Log.w("ScanResult","Connecting to $device.address")
+        device.connectGatt(this, false, gattCallback)
+    }
+
+    private fun startBleScan() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isLocationPermissionGranted) {
+            requestLocationPermission()
+        }
+        else if(isScanning) {
+            scanStop()
+        } else {
+            scanStart()
+        }
+    }
+
+    private fun requestLocationPermission() {
+        if (isLocationPermissionGranted) {
+            return
+        }
+        runOnUiThread {
+            var dlgBuilder = AlertDialog.Builder(this)
+            dlgBuilder.setTitle("Location permission required")
+            dlgBuilder.setMessage("Starting from Android M (6.0), the system requires apps to be granted location access in order to scan for BLE devices.")
+            dlgBuilder.setIcon(android.R.drawable.ic_dialog_alert)
+            dlgBuilder.setPositiveButton(android.R.string.ok){dialogInterface, which->requestPermission(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                LOCATION_PERMISSION_REQUEST_CODE
+            )}
+            var dlg: AlertDialog = dlgBuilder.create()
+            dlg.show()
+            /*
+            dlg.setCancelable(false)
+                .setPositiveButton(android.R.string.ok, DialogInterface.OnClickListener{ dialog, id->recreate() })
+            var alert = dlg.create()
+            alert.setTitle("Location permission required")
+            alert.setIcon(R.mipmap.ic_launcher)
+            alert.show()
+
+
+            alert("Location permission required", "Need location permission to scan for BLE devices", android.R.string.ok, )
+            alert {
+                title = "Location permission required"
+                message = "Starting from Android M (6.0), the system requires apps to be granted " +
+                        "location access in order to scan for BLE devices."
+                isCancelable = false
+                positiveButton(android.R.string.ok) {
+                    requestPermission(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        LOCATION_PERMISSION_REQUEST_CODE
+                    )
+                }
+            }.show()*/
+        }
+    }
+/*
+    //fun alert(title:String, message:String, isCancelable:Boolean, positiveButton:(String)->Unit): AlertDialog {
+    fun alert(): Unit {
+        var dlg = AlertDialog.Builder(this)
+        var intent = Intent(this, MainActivity::class.java)
+        dlg.setMessage(message)
+            .setCancelable(isCancelable)
+            .setPositiveButton(positiveButton.)
+        //.setPositiveButton(positiveButton, DialogInterface.OnClickListener{dialog, id->recreate()})
+        var alert = dlg.create()
+        alert.setTitle(title)
+        alert.setIcon(R.mipmap.ic_launcher)
+        return alert // alert.show()
+    }
+*/
+    private fun Activity.requestPermission(permission: String, requestCode: Int) {
+        ActivityCompat.requestPermissions(this, arrayOf(permission), requestCode)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            LOCATION_PERMISSION_REQUEST_CODE -> {
+                if (grantResults.firstOrNull() == PackageManager.PERMISSION_DENIED) {
+                    requestLocationPermission()
+                } else {
+                    startBleScan()
+                }
+            }
+        }
+    }
+
 //    override fun onCameraViewStarted(width: Int, height: Int) {
 //        mRgba = Mat(height, width, CvType.CV_8UC4)
 //        //mDetector = ColorBlobDetector()
