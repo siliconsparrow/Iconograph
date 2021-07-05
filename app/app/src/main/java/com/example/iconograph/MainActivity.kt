@@ -18,6 +18,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
+// TODO: Move camera and image stuff to separate classes.
+// TODO: Interactive camera image
+// TODO: Interactive contour display and parameter controls
+// TODO: Convert to vectors
+// TODO: Send vectors to robot
+// TODO: Receive progress updates from robot
+
 //class MainActivity : AppCompatActivity(), OnTouchListener, CvCameraViewListener2
 class MainActivity : AppCompatActivity()
 {
@@ -56,6 +63,8 @@ class MainActivity : AppCompatActivity()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        findViewById<Button>(R.id.buttonTestSend).setOnClickListener { btnTest() }
 
         val mBtnPhoto = findViewById<Button>(R.id.buttonPhoto)
         mBtnPhoto.setOnClickListener {
@@ -193,6 +202,14 @@ class MainActivity : AppCompatActivity()
                 }
             }
         }
+    }
+
+    private fun btnTest() {
+        comm.send("Hello World".toByteArray())
+    }
+
+    fun recvd(str: String) {
+        Log.w("APP", "RX: $str")
     }
 
 //    override fun onCameraViewStarted(width: Int, height: Int) {

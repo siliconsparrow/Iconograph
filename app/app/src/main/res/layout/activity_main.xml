@@ -46,10 +46,17 @@
                 android:textColor="@color/purple_500" />
 
             <Button
+                android:id="@+id/buttonTestSend"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Test Send Data" />
+
+            <Button
                 android:id="@+id/buttonPhoto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Take Photo" />
+
         </LinearLayout>
 
     </LinearLayout>

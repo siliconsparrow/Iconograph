@@ -6,12 +6,9 @@ import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
-import android.content.Intent
-import android.graphics.Color
 import android.util.Log
-import android.widget.Button
 import java.util.*
-import kotlin.collections.ArrayList
+
 
 class BleComm(m: MainActivity) {
 
@@ -23,7 +20,12 @@ class BleComm(m: MainActivity) {
     }
 
     // Values
-    private val UART_SERVICE_UUID = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
+    private val cccd            = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    private val uartServiceUuid = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
+    private val rxCharUuid      = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
+    private val rxServiceUuid   = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
+    private val txCharUuid      = UUID.fromString("6e400003-b5a3-f393-e0a9-e50e24dcca9e")
+
     private val mainAct = m
     private val logTag = "BLE"
     private val bleDeviceName = "Nordic_UART"
@@ -53,11 +55,7 @@ class BleComm(m: MainActivity) {
 
     // Variables
     private var state = BleState.IDLE
-    //var isScanning: Boolean = false
-
-    init {
-        Log.w(logTag, "Init")
-    }
+    private var connectedGatt: BluetoothGatt? = null
 
     private fun log(msg:String) {
         Log.w(logTag, msg)
@@ -69,6 +67,7 @@ class BleComm(m: MainActivity) {
         mainAct.setStatusText(s.str)
     }
 
+    // Probe whether system bluetooth is turned on.
     fun isBluetoothEnabled(): Boolean {
         return bluetoothAdapter.isEnabled
     }
@@ -84,7 +83,6 @@ class BleComm(m: MainActivity) {
     }
 
     fun destroy() {
-
     }
 
     // Start scanning for the bluetooth device.
@@ -99,6 +97,7 @@ class BleComm(m: MainActivity) {
         setState(BleState.IDLE)
     }
 
+    // Called if the BLE connection fails or if the remote device disconnects.
     private fun connectionFail() {
         setState(BleState.IDLE)
 
@@ -107,9 +106,10 @@ class BleComm(m: MainActivity) {
         scanStart()
     }
 
+    // Log all the discovered services.
     private fun printGattTable(services: List<BluetoothGattService>) {
         if(services.isEmpty()) {
-            Log.w(logTag, "No services available")
+            log("No services available")
             return
         }
         services.forEach { service->
@@ -117,7 +117,7 @@ class BleComm(m: MainActivity) {
                 separator = "\n|--",
                 prefix = "|--"
             ) { it.uuid.toString() }
-            Log.w(logTag,"\nService ${service.uuid}\nCharacteristics:\n$characteristicsTable")
+            log("\nService ${service.uuid}\nCharacteristics:\n$characteristicsTable")
         }
     }
 
@@ -126,34 +126,93 @@ class BleComm(m: MainActivity) {
             val deviceAddress = gatt.device.address
             if(status == BluetoothGatt.GATT_SUCCESS) {
                 if(newState == BluetoothProfile.STATE_CONNECTED) {
-                    Log.w(logTag, "Connected to $deviceAddress")
-                    Log.w(logTag, "Discovering services...")
+                    log("Connected to $deviceAddress")
+                    log("Discovering services...")
                     gatt.discoverServices()
+                    connectedGatt = gatt
                 } else {
-                    Log.w(logTag, "Disconnected from $deviceAddress")
+                    log("Disconnected from $deviceAddress")
+                    connectedGatt = null
                     gatt.close()
                     connectionFail()
                 }
             } else {
-                Log.w(logTag,"Error $status with connection to $deviceAddress")
-                Log.w(logTag, "Disconnected from $deviceAddress")
+                log("Error $status with connection to $deviceAddress")
+                log("Disconnected from $deviceAddress")
+                connectedGatt = null
                 gatt.close()
                 connectionFail()
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            Log.w(logTag, "Discovered ${gatt.services.size} for ${gatt.device.address}")
+            log("Discovered ${gatt.services.size} services on ${gatt.device.address}")
             printGattTable(gatt.services)
+            enableTxNotification()
             setState(BleState.CONNECTED)
         }
+
+        override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+            log("Characteristic Change Notification ${characteristic.toString()}")
+            log("CHValue: ${characteristic.getStringValue(0)}")
+            mainAct.recvd(characteristic.getStringValue(0))
+
+            //gatt.readCharacteristic(characteristic)
+        }
+
+//        override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+//            log("CHRCALLBACK")
+//            if (status == BluetoothGatt.GATT_SUCCESS) {
+//                val rx = characteristic.value.toString()
+//                log("Received $rx")
+//            }
+//        }
     }
 
     private fun bleConnect(device: BluetoothDevice)  {
-        Log.w(logTag,"Connecting to ${device.address}")
+        log("Connecting to ${device.address}")
         setState(BleState.CONNECTING)
         device.connectGatt(mainAct, false, gattCallback)
     }
 
+    fun enableTxNotification(): Boolean {
+        val rxService: BluetoothGattService? = connectedGatt?.getService(rxServiceUuid)
+        if(rxService == null) {
+            log("Rx service not found!")
+            return false
+        }
+        val txChar = rxService.getCharacteristic(txCharUuid)
+        if (txChar == null) {
+            log("Tx characteristic not found!")
+            return false
+        }
+        connectedGatt?.setCharacteristicNotification(txChar, true)
+
+        val descriptor = txChar.getDescriptor(cccd)
+        descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+        connectedGatt?.writeDescriptor(descriptor)
+        log("TX Notification enabled")
+        return true
+    }
+
+    fun send(data: ByteArray): Boolean {
+        if(state != BleState.CONNECTED) {
+            return false
+        }
+
+        val rxService = connectedGatt?.getService(uartServiceUuid) ?: return false
+        val rxChar = rxService.getCharacteristic(rxCharUuid) ?: return false
+
+        rxChar.value = data
+
+        val result = connectedGatt?.writeCharacteristic(rxChar)
+
+        if(result == true) {
+            log("Sent ${data.size} bytes")
+        } else {
+            log("Send ${data.size} bytes FAILED")
+        }
+        return result == true
+    }
 
 }
