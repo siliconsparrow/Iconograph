@@ -1,21 +1,12 @@
-/* Linker script for the nRF52832-QFAA including Nordic Softdevice
-
-  MEMORY MAP
-  
-  START      END        SIZE  DESCRIPTION
-  ---------- ---------- ----- -------------------------------------
-  0x00000000 0x00025FFF  152k Nordic Softdevice s132
-  0x00026000 0x0007FFFF  360k Main firmware
-  
-*/
+/* Linker script to configure memory regions. */
 
 SEARCH_DIR(.)
 GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-  FLASH (rx)  :  ORIGIN = 0x26000,    LENGTH = 0x5A000 /* Application firmware */
-  RAM   (rwx) :  ORIGIN = 0x20001db8, LENGTH = 0xe248  /* RAM available to application */
+  FLASH (rx) : ORIGIN = 0x19000, LENGTH = 0x67000
+  RAM (rwx) :  ORIGIN = 0x200022c8, LENGTH = 0xdd38
 }
 
 SECTIONS
@@ -28,18 +19,6 @@ SECTIONS
   .mem_section_dummy_ram :
   {
   }
-  .log_dynamic_data :
-  {
-    PROVIDE(__start_log_dynamic_data = .);
-    KEEP(*(SORT(.log_dynamic_data*)))
-    PROVIDE(__stop_log_dynamic_data = .);
-  } > RAM
-  .log_filter_data :
-  {
-    PROVIDE(__start_log_filter_data = .);
-    KEEP(*(SORT(.log_filter_data*)))
-    PROVIDE(__stop_log_filter_data = .);
-  } > RAM
   .cli_sorted_cmd_ptrs :
   {
     PROVIDE(__start_cli_sorted_cmd_ptrs = .);
@@ -51,6 +30,18 @@ SECTIONS
     PROVIDE(__start_fs_data = .);
     KEEP(*(.fs_data))
     PROVIDE(__stop_fs_data = .);
+  } > RAM
+  .log_dynamic_data :
+  {
+    PROVIDE(__start_log_dynamic_data = .);
+    KEEP(*(SORT(.log_dynamic_data*)))
+    PROVIDE(__stop_log_dynamic_data = .);
+  } > RAM
+  .log_filter_data :
+  {
+    PROVIDE(__start_log_filter_data = .);
+    KEEP(*(SORT(.log_filter_data*)))
+    PROVIDE(__stop_log_filter_data = .);
   } > RAM
 
 } INSERT AFTER .data;
@@ -78,24 +69,6 @@ SECTIONS
     KEEP(*(SORT(.pwr_mgmt_data*)))
     PROVIDE(__stop_pwr_mgmt_data = .);
   } > FLASH
-  .log_const_data :
-  {
-    PROVIDE(__start_log_const_data = .);
-    KEEP(*(SORT(.log_const_data*)))
-    PROVIDE(__stop_log_const_data = .);
-  } > FLASH
-    .nrf_balloc :
-  {
-    PROVIDE(__start_nrf_balloc = .);
-    KEEP(*(.nrf_balloc))
-    PROVIDE(__stop_nrf_balloc = .);
-  } > FLASH
-    .nrf_queue :
-  {
-    PROVIDE(__start_nrf_queue = .);
-    KEEP(*(.nrf_queue))
-    PROVIDE(__stop_nrf_queue = .);
-  } > FLASH
   .sdh_state_observers :
   {
     PROVIDE(__start_sdh_state_observers = .);
@@ -114,6 +87,18 @@ SECTIONS
     KEEP(*(SORT(.sdh_req_observers*)))
     PROVIDE(__stop_sdh_req_observers = .);
   } > FLASH
+    .nrf_queue :
+  {
+    PROVIDE(__start_nrf_queue = .);
+    KEEP(*(.nrf_queue))
+    PROVIDE(__stop_nrf_queue = .);
+  } > FLASH
+    .nrf_balloc :
+  {
+    PROVIDE(__start_nrf_balloc = .);
+    KEEP(*(.nrf_balloc))
+    PROVIDE(__stop_nrf_balloc = .);
+  } > FLASH
     .cli_command :
   {
     PROVIDE(__start_cli_command = .);
@@ -125,6 +110,12 @@ SECTIONS
     PROVIDE(__start_crypto_data = .);
     KEEP(*(SORT(.crypto_data*)))
     PROVIDE(__stop_crypto_data = .);
+  } > FLASH
+  .log_const_data :
+  {
+    PROVIDE(__start_log_const_data = .);
+    KEEP(*(SORT(.log_const_data*)))
+    PROVIDE(__stop_log_const_data = .);
   } > FLASH
   .log_backends :
   {
