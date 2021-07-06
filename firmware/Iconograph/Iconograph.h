@@ -6,18 +6,19 @@
 #define ICONOGRAPH_H_
 
 #include "BLEUart.h"
-//#include "Motor.h"
-//#include "Timer.h"
-
-#ifdef OLD
+#include "Motor.h"
+#include "Timer.h"
 
 class Iconograph
-	: public Timer::Delegate
+	: public BLEUart::Delegate
+	, public Timer::Delegate
 {
 public:
 	Iconograph();
 	virtual ~Iconograph() { }
 
+protected:
+	virtual void rxData(const uint8_t *data, unsigned size);
 	virtual void evtTimer(unsigned param);
 
 private:
@@ -26,24 +27,10 @@ private:
 	};
 
 	Motor  _motor;
+	BLEUart _uart;
 
 	unsigned _motorNum; // TEST
 	unsigned _motorPos; // TEST
-};
-#endif // OLD
-
-class Iconograph
-	: public BLEUart::Delegate
-{
-public:
-	Iconograph();
-	virtual ~Iconograph() { }
-
-protected:
-	virtual void rxData(const uint8_t *data, unsigned size);
-
-private:
-	BLEUart _uart;
 };
 
 

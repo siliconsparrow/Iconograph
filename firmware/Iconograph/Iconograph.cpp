@@ -3,15 +3,12 @@
 // created 9-May-2021
 
 #include "Iconograph.h"
-#include "BLE.h"
-
-#if OLD
 
 Iconograph::Iconograph()
 	: _motorNum(0)
 	, _motorPos(0)
 {
-	_ble = BLE::instance();
+	_uart.setDelegate(this);
 
 	Timer::instance()->setPeriodic(250, this);
 }
@@ -27,13 +24,6 @@ void Iconograph::evtTimer(unsigned param)
 			_motorPos = 0;
 		}
 	}
-}
-#endif // OLD
-
-
-Iconograph::Iconograph()
-{
-	_uart.setDelegate(this);
 }
 
 // Called when data is received from the Android app.

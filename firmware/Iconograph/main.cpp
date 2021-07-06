@@ -4,7 +4,6 @@
 
 // TODO: Watchdog
 // TODO: Robot arm control
-// TODO: Integrate servo controller into BLE code
 // TODO: Packet structure and vector drawing
 
 #include "nordic_common.h"
