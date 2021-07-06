@@ -28,7 +28,7 @@ class BleComm(m: MainActivity) {
 
     private val mainAct = m
     private val logTag = "BLE"
-    private val bleDeviceName = "Nordic_UART"
+    private val bleDeviceName = "Iconograph"
 
     // Create filter so we will only detect our device and nothing else.
     private val filters = listOf(ScanFilter.Builder().setDeviceName(bleDeviceName).build())
