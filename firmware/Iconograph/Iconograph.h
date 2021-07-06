@@ -5,9 +5,11 @@
 #ifndef ICONOGRAPH_H_
 #define ICONOGRAPH_H_
 
-#include "BLE.h"
-#include "Motor.h"
-#include "Timer.h"
+#include "BLEUart.h"
+//#include "Motor.h"
+//#include "Timer.h"
+
+#ifdef OLD
 
 class Iconograph
 	: public Timer::Delegate
@@ -23,11 +25,25 @@ private:
 		kNumMotors = 3,
 	};
 
-	BLE   _ble;
-	Motor _motor;
+	Motor  _motor;
 
 	unsigned _motorNum; // TEST
 	unsigned _motorPos; // TEST
+};
+#endif // OLD
+
+class Iconograph
+	: public BLEUart::Delegate
+{
+public:
+	Iconograph();
+	virtual ~Iconograph() { }
+
+protected:
+	virtual void rxData(const uint8_t *data, unsigned size);
+
+private:
+	BLEUart _uart;
 };
 
 

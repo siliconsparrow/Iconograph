@@ -9,10 +9,10 @@ OUTPUT_DIRECTORY := Release
 
 SDK_ROOT      := ../nRF_SDK_16.0.0
 PROJ_DIR      := .
-#NRF_STACK     := $(SDK_ROOT)/components/softdevice/s132/hex/s132_nrf52_7.0.1_softdevice.hex
+NRF_STACK     := $(SDK_ROOT)/components/softdevice/s112/hex/s112_nrf52_7.0.1_softdevice.hex
 HEXMERGE      := $(PROJ_DIR)/mergeHex.py
-#TEMPLATE_PATH := $(SDK_ROOT)/components/toolchain/gcc
-#
+TEMPLATE_PATH := $(SDK_ROOT)/components/toolchain/gcc
+
 #$(OUTPUT_DIRECTORY)/$(PROJECT_NAME).out: \
 #LINKER_SCRIPT  := nRF52832_xxaa.ld
 #
@@ -117,14 +117,14 @@ HEXMERGE      := $(PROJ_DIR)/mergeHex.py
 ## keep every function in a separate section, this allows linker to discard unused ones
 #CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 #CFLAGS += -fno-builtin -fshort-enums
-#
-## C++ flags common to all targets
-#CXXFLAGS += $(OPT)
-#CXXFLAGS += -std=c++11 -std=gnu++11
-#CXXFLAGS += -fno-rtti
-#CXXFLAGS += -fno-exceptions
-#CXXFLAGS += -fno-threadsafe-statics
-#
+
+# C++ flags common to all targets
+CXXFLAGS += $(OPT)
+CXXFLAGS += -std=c++11 -std=gnu++11
+CXXFLAGS += -fno-rtti
+CXXFLAGS += -fno-exceptions
+CXXFLAGS += -fno-threadsafe-statics
+
 ## Assembler flags common to all targets
 #ASMFLAGS += -g0
 #ASMFLAGS += -mcpu=cortex-m4
@@ -149,26 +149,7 @@ HEXMERGE      := $(PROJ_DIR)/mergeHex.py
 #LDFLAGS += --specs=nano.specs
 ## Suppress 32-bit character warnings.
 ##LDFLAGS +=  -Wl,--no-wchar-size-warning
-#
-##$(PROJECT_NAME): CFLAGS += -D__HEAP_SIZE=12288
-##$(PROJECT_NAME): CFLAGS += -D__STACK_SIZE=16384
-##$(PROJECT_NAME): ASMFLAGS += -D__HEAP_SIZE=12288
-##$(PROJECT_NAME): ASMFLAGS += -D__STACK_SIZE=16384
-#
-#release: $(OUTPUT_DIRECTORY)/$(PROJECT_NAME).hex
-#	echo $(TOOLCHAIN_CONFIG_FILE)
-#	$(HEXMERGE) $(OUTPUT_DIRECTORY)/$(PROJECT_NAME).hex $(NRF_STACK) > $(OUTPUT_DIRECTORY)/$(PROJECT_NAME)_final.hex
-#
-#include $(TEMPLATE_PATH)/Makefile.common
-#
-#$(foreach target, $(TARGETS), $(call define_target, $(target)))
 
-#PROJECT_NAME     := ble_app_uart_pca10040_s112
-#TARGETS          := nrf52832_xxaa
-#OUTPUT_DIRECTORY := _build
-
-#SDK_ROOT := ../../../../../..
-#PROJ_DIR := ../../..
 HEXMERGE := $(PROJ_DIR)/mergeHex.py
 
 $(OUTPUT_DIRECTORY)/$(PROJECT_NAME).out: \
@@ -219,6 +200,9 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uarte.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c \
+  $(PROJ_DIR)/tinycpp.cpp \
+  $(PROJ_DIR)/BLEUart.cpp \
+  $(PROJ_DIR)/Iconograph.cpp \
   $(PROJ_DIR)/main.cpp \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
@@ -402,7 +386,8 @@ CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 CFLAGS += -fno-builtin -fshort-enums
 
 # C++ flags common to all targets
-CXXFLAGS += $(OPT)
+#CXXFLAGS += $(OPT)
+
 # Assembler flags common to all targets
 ASMFLAGS += -g3
 ASMFLAGS += -mcpu=cortex-m4
@@ -439,49 +424,10 @@ $(PROJECT_NAME): ASMFLAGS += -D__STACK_SIZE=2048
 # that may need symbols provided by these libraries.
 LIB_FILES += -lc -lnosys -lm
 
-
-#.PHONY: default help
-
-## Default target - first one defined
-#default: nrf52832_xxaa
-
-## Print all targets that can be built
-#help:
-#	@echo following targets are available:
-#	@echo		nrf52832_xxaa
-#	@echo		flash_softdevice
-#	@echo		sdk_config - starting external tool for editing sdk_config.h
-#	@echo		flash      - flashing binary
-
-TEMPLATE_PATH := $(SDK_ROOT)/components/toolchain/gcc
-
-
 include $(TEMPLATE_PATH)/Makefile.common
 
 $(foreach target, $(TARGETS), $(call define_target, $(target)))
 
-.PHONY: flash flash_softdevice erase
-
 # Merge the application and stack to produce a complete image.
 release: $(OUTPUT_DIRECTORY)/$(PROJECT_NAME).hex
-	$(HEXMERGE) $(OUTPUT_DIRECTORY)/$(PROJECT_NAME).hex $(SDK_ROOT)/components/softdevice/s112/hex/s112_nrf52_7.0.1_softdevice.hex > $(OUTPUT_DIRECTORY)/$(PROJECT_NAME)_final.hex
-
-## Flash the program
-#flash: default
-#	@echo Flashing: $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex
-#	nrfjprog -f nrf52 --program $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex --sectorerase
-#	nrfjprog -f nrf52 --reset
-#
-## Flash softdevice
-#flash_softdevice:
-#	@echo Flashing: s112_nrf52_7.0.1_softdevice.hex
-#	nrfjprog -f nrf52 --program $(SDK_ROOT)/components/softdevice/s112/hex/s112_nrf52_7.0.1_softdevice.hex --sectorerase
-#	nrfjprog -f nrf52 --reset
-#
-#erase:
-#	nrfjprog -f nrf52 --eraseall
-
-SDK_CONFIG_FILE := $(PROJ_DIR)/sdk_config.h
-CMSIS_CONFIG_TOOL := $(SDK_ROOT)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar
-sdk_config:
-	java -jar $(CMSIS_CONFIG_TOOL) $(SDK_CONFIG_FILE)
+	$(HEXMERGE) $(OUTPUT_DIRECTORY)/$(PROJECT_NAME).hex $(NRF_STACK) > $(OUTPUT_DIRECTORY)/$(PROJECT_NAME)_final.hex
