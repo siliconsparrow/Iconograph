@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Button
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -64,7 +65,21 @@ class MainActivity : AppCompatActivity()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<Button>(R.id.buttonTestSend).setOnClickListener { btnTest() }
+        findViewById<SeekBar>(R.id.seekBar1).setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar, i: Int, b:Boolean) {
+                testSetServo(1, i)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) { }
+            override fun onStopTrackingTouch(seekBar: SeekBar) { }
+        })
+
+        findViewById<SeekBar>(R.id.seekBar2).setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar, i: Int, b:Boolean) {
+                testSetServo(2, i)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) { }
+            override fun onStopTrackingTouch(seekBar: SeekBar) { }
+        })
 
         val mBtnPhoto = findViewById<Button>(R.id.buttonPhoto)
         mBtnPhoto.setOnClickListener {
@@ -79,6 +94,16 @@ class MainActivity : AppCompatActivity()
 //        mOpenCvCameraView = findViewById<CameraBridgeViewBase>(R.id.color_blob_detection_activity_surface_view);
 //        mOpenCvCameraView.visibility = SurfaceView.VISIBLE
 //        mOpenCvCameraView.setCvCameraViewListener(this);
+    }
+
+    private fun testSetServo(id: Int, pos:Int) {
+        if(comm.isConnected()) {
+            var pkt = ByteArray(3)
+            pkt[0] = 0x02
+            pkt[1] = id.toByte()
+            pkt[2] = pos.toByte()
+            comm.send(pkt)
+        }
     }
 
     // Update the status text box with the given string.
@@ -204,9 +229,9 @@ class MainActivity : AppCompatActivity()
         }
     }
 
-    private fun btnTest() {
-        comm.send("Hello World".toByteArray())
-    }
+//    private fun btnTest() {
+//        comm.send("Hello World".toByteArray())
+//    }
 
     fun recvd(str: String) {
         Log.w("APP", "RX: $str")

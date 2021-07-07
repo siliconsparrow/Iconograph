@@ -72,6 +72,11 @@ class BleComm(m: MainActivity) {
         return bluetoothAdapter.isEnabled
     }
 
+    // TODO: This could be a property
+    fun isConnected() : Boolean {
+        return state == BleState.CONNECTED
+    }
+
     fun pause() {
         // TODO: Maybe disconnect BLE connection here?
     }
@@ -208,7 +213,7 @@ class BleComm(m: MainActivity) {
         val result = connectedGatt?.writeCharacteristic(rxChar)
 
         if(result == true) {
-            log("Sent ${data.size} bytes")
+            //log("Sent ${data.size} bytes")
         } else {
             log("Send ${data.size} bytes FAILED")
         }

@@ -10,7 +10,10 @@ Iconograph::Iconograph()
 {
 	_uart.setDelegate(this);
 
-	Timer::instance()->setPeriodic(250, this);
+	//Timer::instance()->setPeriodic(250, this);
+
+	_motor.setPosition(0, Motor::getMaxPosition() / 2);
+	_motor.setPosition(1, Motor::getMaxPosition() / 2);
 }
 
 void Iconograph::evtTimer(unsigned param)
@@ -29,18 +32,16 @@ void Iconograph::evtTimer(unsigned param)
 // Called when data is received from the Android app.
 void Iconograph::rxData(const uint8_t *data, unsigned size)
 {
-	static char code = 'A';
-	unsigned maxPayload = _uart.getMaxPayload();
+	if(data[0] == 2) {
+		switch(data[1])
+		{
+		case 1:
+			_motor.setPosition(0, ((100 - (unsigned)data[2]) * Motor::getMaxPosition()) / 100);
+			break;
 
-	char msg[maxPayload];
-	strcpy(msg, "ECHO:_:");
-
-	msg[5] = code++;
-
-	unsigned len = size;
-	if(len > maxPayload - 7)
-		len = maxPayload - 7;
-
-	memcpy(&msg[7], data, len);
-	_uart.send((const uint8_t *)msg, len + 7);
+		case 2:
+			_motor.setPosition(1, ((100 - (unsigned)data[2]) * Motor::getMaxPosition()) / 100);
+			break;
+		}
+	}
 }
