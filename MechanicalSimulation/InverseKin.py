@@ -93,13 +93,13 @@ class Simulation:
 
     def calcAngles(self, x, y):
         d = self.lengthOfHypotenuse(x, y)
-        print("d=",str(round(d, 3)))
+        #print("d=",str(round(d, 3)))
         angle0 = self.calcOppositeAngle(d, self.rod1.length, self.rod2.length)
-        print("angle0=",self.fmtAngle(angle0))
+        #print("angle0=",self.fmtAngle(angle0))
         angle1 = (math.pi) - self.calcOppositeAngle(self.rod1.length, self.rod2.length, d)
         print("angle1=",self.fmtAngle(angle1))
         angle2 = self.calcTheta(-x, y)
-        print("angle2=",self.fmtAngle(angle2))
+        #print("angle2=",self.fmtAngle(angle2))
         baseAngle = math.pi - angle2 - angle0
         print("baseAngle=",self.fmtAngle(baseAngle))
         return (baseAngle,angle1)
@@ -120,7 +120,7 @@ class App:
         self.x = -100
         self.y = 60
         self.th = 0
-        self.r = 10
+        self.r = 30
         self.sim.setAt(self.x, self.y)
         self.root.after(250, self.tick)
         self.root.mainloop()
