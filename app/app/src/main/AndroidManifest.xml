@@ -2,26 +2,36 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.iconograph">
 
-    <uses-permission android:name="android.permission.CAMERA"/>
-
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <uses-feature android:name="android.hardware.camera" android:required="false"/>
-    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
-    <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
-    <uses-feature android:name="android.hardware.camera.front.autofocus" android:required="false"/>
-
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.front"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.front.autofocus"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
 
     <application
+        android:debuggable="true"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Iconograph">
+        <activity android:name=".ActivityRoboTest"></activity>
         <activity android:name=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,21 +40,5 @@
             </intent-filter>
         </activity>
     </application>
-
-    <!-- <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.nordicsemi.nrfUARTv2" android:versionCode="43" android:versionName="2.0">
-<uses-sdk android:minSdkVersion="18" android:targetSdkVersion="18"/>
-<uses-permission android:name="android.permission.BLUETOOTH"/>
-<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-<application android:label="@string/app_name" android:theme="@android:style/Theme.Holo.Light" android:icon="@drawable/nrfuart_hdpi_icon">
-<activity android:name=".MainActivity" android:label="@string/app_name" android:windowSoftInputMode="stateHidden" android:configChanges="keyboardHidden|orientation|screenSize">
-<intent-filter>
-<action android:name="android.intent.action.MAIN"/>
-<category android:name="android.intent.category.LAUNCHER"/>
-</intent-filter>
-</activity>
-<activity android:name=".DeviceListActivity" android:label="@string/app_name" android:theme="@android:style/Theme.Dialog"/>
-<service android:enabled="true" android:name=".UartService"/>
-</application>
-</manifest> -->
 
 </manifest>

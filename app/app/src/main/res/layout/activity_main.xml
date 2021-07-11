@@ -56,6 +56,12 @@
                 android:layout_height="60dp" />
 
             <Button
+                android:id="@+id/buttonRoboTest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Robo Test" />
+
+            <Button
                 android:id="@+id/buttonPhoto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

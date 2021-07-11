@@ -6,4 +6,30 @@
     android:layout_height="match_parent"
     tools:context=".ActivityRoboTest">
 
+    <LinearLayout
+        android:id="@+id/layoutRoboTest"
+        android:layout_width="409dp"
+        android:layout_height="729dp"
+        android:orientation="vertical"
+        tools:layout_editor_absoluteX="1dp"
+        tools:layout_editor_absoluteY="1dp">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ROBO TEST"
+            android:textAlignment="center"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/textViewArmInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TextView"
+            android:textAlignment="center"
+            android:textSize="16sp" />
+
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

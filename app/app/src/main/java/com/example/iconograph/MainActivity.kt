@@ -65,6 +65,12 @@ class MainActivity : AppCompatActivity()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        findViewById<Button>(R.id.buttonRoboTest).setOnClickListener {
+            val intent = Intent(this, ActivityRoboTest::class.java)
+            startActivity(intent)
+        }
+
+
         findViewById<SeekBar>(R.id.seekBar1).setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(seekBar: SeekBar, i: Int, b:Boolean) {
                 testSetServo(1, i)
