@@ -31,7 +31,12 @@ private:
 
 	unsigned _motorNum; // TEST
 	unsigned _motorPos; // TEST
-};
 
+	void cmdMotorPosition(const uint8_t *data, unsigned size);
+	void cmdXyPosition(const uint8_t *data, unsigned size);
+	void moveTo(uint16_t posX, uint16_t posY);
+
+	static double calcOppositeAngle(double a, double b, double c);
+};
 
 #endif // ICONOGRAPH_H_

@@ -88,9 +88,8 @@ INC_FOLDERS += \
   $(SDK_ROOT)/external/fprintf \
 
 # Libraries common to all targets
-LIB_FILES +=
-#-lc -lnosys -lm
-#	-lm
+LIB_FILES += -lm
+#-lc -lnosys
 
 # Optimization flags
 OPT = -O0 -g3
