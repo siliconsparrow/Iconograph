@@ -18,8 +18,8 @@
         <TextView
             android:id="@+id/label1"
             android:layout_width="match_parent"
-            android:layout_height="100px"
-            android:text="Camera Test"
+            android:layout_height="100dp"
+            android:text="Robot Test"
             android:textAlignment="center"
             android:textAppearance="@style/TextAppearance.AppCompat.Large"
             android:textStyle="bold" />
@@ -37,6 +37,40 @@
             android:orientation="vertical"
             android:paddingHorizontal="10dp">
 
+            <com.example.iconograph.RoboTestView
+                android:id="@+id/roboTestView"
+                android:layout_width="match_parent"
+                android:layout_height="300dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/buttonDrawSquare"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetRight="5dp"
+                    android:text="SQUARE" />
+
+                <Button
+                    android:id="@+id/buttonDrawStar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="STAR" />
+
+                <Button
+                    android:id="@+id/buttonDrawCircle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetLeft="5dp"
+                    android:text="CIRCLE" />
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/textViewStatus"
                 android:layout_width="match_parent"
@@ -48,18 +82,12 @@
             <SeekBar
                 android:id="@+id/seekBar1"
                 android:layout_width="match_parent"
-                android:layout_height="60dp" />
+                android:layout_height="40dp" />
 
             <SeekBar
                 android:id="@+id/seekBar2"
                 android:layout_width="match_parent"
-                android:layout_height="60dp" />
-
-            <Button
-                android:id="@+id/buttonRoboTest"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Robo Test" />
+                android:layout_height="40dp" />
 
             <Button
                 android:id="@+id/buttonPhoto"

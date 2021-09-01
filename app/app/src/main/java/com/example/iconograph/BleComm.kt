@@ -9,7 +9,6 @@ import android.content.Context
 import android.util.Log
 import java.util.*
 
-
 class BleComm(m: MainActivity) {
 
     enum class BleState(val str: String) {
@@ -20,7 +19,7 @@ class BleComm(m: MainActivity) {
     }
 
     // Values
-    private val cccd            = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    private val txNotifyDesc    = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     private val uartServiceUuid = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
     private val rxCharUuid      = UUID.fromString("6e400002-b5a3-f393-e0a9-e50e24dcca9e")
     private val rxServiceUuid   = UUID.fromString("6e400001-b5a3-f393-e0a9-e50e24dcca9e")
@@ -78,7 +77,7 @@ class BleComm(m: MainActivity) {
     }
 
     fun pause() {
-        // TODO: Maybe disconnect BLE connection here?
+        disconnect()
     }
 
     fun resume() {
@@ -88,6 +87,7 @@ class BleComm(m: MainActivity) {
     }
 
     fun destroy() {
+        disconnect()
     }
 
     // Start scanning for the bluetooth device.
@@ -100,6 +100,11 @@ class BleComm(m: MainActivity) {
     private fun scanStop() {
         bleScanner.stopScan(scanCallback)
         setState(BleState.IDLE)
+    }
+
+    private fun disconnect() {
+        connectedGatt?.disconnect()
+        state = BleState.IDLE
     }
 
     // Called if the BLE connection fails or if the remote device disconnects.
@@ -158,7 +163,7 @@ class BleComm(m: MainActivity) {
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            log("Characteristic Change Notification ${characteristic.toString()}")
+            log("Characteristic Change Notification $characteristic")
             log("CHValue: ${characteristic.getStringValue(0)}")
             mainAct.recvd(characteristic.getStringValue(0))
 
@@ -166,7 +171,7 @@ class BleComm(m: MainActivity) {
         }
 
 //        override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-//            log("CHRCALLBACK")
+//            log("CHR READ")
 //            if (status == BluetoothGatt.GATT_SUCCESS) {
 //                val rx = characteristic.value.toString()
 //                log("Received $rx")
@@ -193,7 +198,7 @@ class BleComm(m: MainActivity) {
         }
         connectedGatt?.setCharacteristicNotification(txChar, true)
 
-        val descriptor = txChar.getDescriptor(cccd)
+        val descriptor = txChar.getDescriptor(txNotifyDesc)
         descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
         connectedGatt?.writeDescriptor(descriptor)
         log("TX Notification enabled")

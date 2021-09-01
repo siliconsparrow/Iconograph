@@ -12,12 +12,18 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.MotionEvent
+import android.view.View
 import android.widget.Button
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import org.opencv.core.Point
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 // TODO: Move camera and image stuff to separate classes.
 // TODO: Interactive camera image
@@ -65,12 +71,6 @@ class MainActivity : AppCompatActivity()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<Button>(R.id.buttonRoboTest).setOnClickListener {
-            val intent = Intent(this, ActivityRoboTest::class.java)
-            startActivity(intent)
-        }
-
-
         findViewById<SeekBar>(R.id.seekBar1).setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(seekBar: SeekBar, i: Int, b:Boolean) {
                 testSetServo(1, i)
@@ -87,6 +87,23 @@ class MainActivity : AppCompatActivity()
             override fun onStopTrackingTouch(seekBar: SeekBar) { }
         })
 
+        findViewById<RoboTestView>(R.id.roboTestView).setOnTouchListener(object:View.OnTouchListener{
+            override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                if(event?.action == MotionEvent.ACTION_DOWN || event?.action == MotionEvent.ACTION_MOVE) {
+                    val w = v?.width ?: 0
+                    val h = v?.height ?: 0
+                    if(w > event.x && h > event.y) {
+                        testSetPosition(event.x, event.y, w.toFloat(), h.toFloat())
+                    }
+                }
+                return false
+            }
+        })
+
+        findViewById<Button>(R.id.buttonDrawSquare).setOnClickListener { drawSquare() }
+        findViewById<Button>(R.id.buttonDrawStar).setOnClickListener { drawStar() }
+        findViewById<Button>(R.id.buttonDrawCircle).setOnClickListener { drawCircle() }
+
         val mBtnPhoto = findViewById<Button>(R.id.buttonPhoto)
         mBtnPhoto.setOnClickListener {
             if (checkSelfPermission(Manifest.permission.CAMERA) !== PackageManager.PERMISSION_GRANTED) {
@@ -102,12 +119,121 @@ class MainActivity : AppCompatActivity()
 //        mOpenCvCameraView.setCvCameraViewListener(this);
     }
 
+    private fun drawSquare() {
+        drawVectors(listOf(
+            Point(16384.0, 16384.0),
+            Point(49152.0, 16384.0),
+            Point(49152.0, 49152.0),
+            Point(16384.0, 49152.0),
+            Point(16384.0, 16384.0)
+        ))
+    }
+
+    private fun drawStar() {
+        var star: MutableList<Point> = mutableListOf()
+        val r = 16384
+        var th = 90
+        for(i in 0..6) {
+            val tr = (th*2*PI)/360
+            star.add(Point(32768 + r * cos(tr), 32768 + r * sin(tr)))
+            th += 72*2
+        }
+        drawVectors(star)
+    }
+    private fun drawCircle() {
+        var circle: MutableList<Point> = mutableListOf()
+        val r = 16384
+        for(th in 0..360 step 10) {
+            val tr = (th*2*PI)/360
+            circle.add(Point(32768 + r * cos(tr), 32768 + r * sin(tr)))
+        }
+        drawVectors(circle)
+    }
+
+    private fun drawVectors(vects: List<Point>) {
+        findViewById<RoboTestView>(R.id.roboTestView).setShape(vects)
+        if(vects.size >= 2) {
+            var first = true
+            for (p in vects) {
+                if (first) {
+                    moveTo(p)
+                    Thread.sleep(500)
+                    penDown()
+                    first = false;
+                } else {
+                    Thread.sleep(500)
+                    moveTo(p)
+                }
+            }
+            Thread.sleep(500)
+            penUp()
+            Thread.sleep(500)
+            resetPosition()
+        }
+    }
+
+    private fun resetPosition() {
+        if (comm.isConnected()) {
+            var pkt = ByteArray(1)
+            pkt[0] = 0x08
+            comm.send(pkt)
+        }
+    }
+
+    private fun moveTo(p: Point) {
+        if (comm.isConnected()) {
+            val x = p.x.toInt()
+            val y = p.y.toInt()
+            var pkt = ByteArray(5)
+            pkt[0] = 0x04
+            pkt[1] = (x % 256).toByte()
+            pkt[2] = (x / 256).toByte()
+            pkt[3] = (y % 256).toByte()
+            pkt[4] = (y / 256).toByte()
+            comm.send(pkt)
+        }
+    }
+
+    private fun penDown() {
+        if (comm.isConnected()) {
+            var pkt = ByteArray(2)
+            pkt[0] = 0x06
+            pkt[1] = 1
+            comm.send(pkt)
+        }
+    }
+
+    private fun penUp() {
+        if (comm.isConnected()) {
+            var pkt = ByteArray(2)
+            pkt[0] = 0x06
+            pkt[1] = 0
+            comm.send(pkt)
+        }
+    }
+
     private fun testSetServo(id: Int, pos:Int) {
         if(comm.isConnected()) {
             var pkt = ByteArray(3)
             pkt[0] = 0x02
             pkt[1] = id.toByte()
             pkt[2] = pos.toByte()
+            comm.send(pkt)
+        }
+    }
+
+    private fun testSetPosition(x: Float, y: Float, w: Float, h: Float) {
+        testSetPosXY(((x * 65535)/w.toFloat()).toInt(), ((y*65535)/h.toFloat()).toInt())
+    }
+
+    private fun testSetPosXY(x: Int, y:Int) {
+        if (comm.isConnected()) {
+            var pkt = ByteArray(5)
+            pkt[0] = 0x04
+            pkt[1] = (x % 256).toByte()
+            pkt[2] = (x / 256).toByte()
+            pkt[3] = (y % 256).toByte()
+            pkt[4] = (y / 256).toByte()
             comm.send(pkt)
         }
     }
