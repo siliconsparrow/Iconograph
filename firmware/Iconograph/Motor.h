@@ -5,24 +5,32 @@
 #ifndef MOTOR_H_
 #define MOTOR_H_
 
-#include <stdint.h>
+#include "MotorPwm.h"
+#include "MotorTimer.h"
 
 class Motor
+    : public MotorTimer::Delegate
 {
 public:
 	enum {
-		kMotorChannels = 4,
+		kMaxPosition = MotorPwm::kMaxValue,
+		kMaxMotors   = 4,
 	};
 
-	Motor();
+	Motor(unsigned pwmNum, unsigned pwmChannel);
+	virtual ~Motor() { }
 
-	static unsigned getMaxPosition();
+	void moveTo(unsigned pos);
 
-	void setPosition(unsigned motorNum, unsigned pos);
+protected:
+	virtual void evtMotorTimer();
 
 private:
-	uint16_t _seq[kMotorChannels];
-	unsigned _currentSeq;
+	MotorPwm *_pwm;
+	unsigned  _pwmChannel;
+	int       _pos;
+	int       _speed;
+	int       _target;
 };
 
 #endif // MOTOR_H_

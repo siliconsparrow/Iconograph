@@ -12,12 +12,63 @@
 #include "Motor.h"
 #include "board.h"
 
+Motor::Motor(unsigned pwmNum, unsigned pwmChannel)
+    : _pwm(MotorPwm::instance(pwmNum))
+	, _pwmChannel(pwmChannel)
+	, _pos(kMaxPosition / 2)
+	, _speed(0)
+	, _target(kMaxPosition / 2)
+{
+	MotorTimer::instance()->subscribe(this);
+}
+
+
+/*
+ * This needs big revising.
+ * I think the acceleration should start with an exponent until max speed is reached.
+ * when the distance is less than a fixed amount from the end of travel, deceleration
+ * is started with an exponent. If there is another queued vector and it is in the
+ * same direction, deceleration is not neccessary.
+ *
+ * If the vector is an angle, the speed might need to be different for the X and Y motors.
+ *
+ */
+
+void Motor::evtMotorTimer()
+{
+	enum {
+		kDecelDistance = 100,
+		kAccelStep     = 2,
+	};
+
+	int dx = _target - _pos; // How far until target position?
+	int absdx = dx < 0 ? -dx : dx;
+	if(absdx < kDecelDistance) {
+		_speed = (dx * 9) / 10;
+	} else if(dx < 0) {
+		_speed -= kAccelStep;
+	} else {
+		_speed += kAccelStep;
+	}
+
+	_pos += _speed;
+
+	_pwm->set(_pwmChannel, _pos);
+}
+
+void Motor::moveTo(unsigned pos)
+{
+	_target = pos;
+}
+
+#ifdef OLD
 const uint32_t gMotorPinout[] = { pinPwmMotor1, pinPwmMotor2, pinPwmMotor3, pinPwmMotor4 };
 
 // Which PWM peripheral to use. You can override this is board.h if required.
 #ifndef MOTOR_DEVICE
 	#define MOTOR_DEVICE NRF_PWM0
 #endif
+
 
 // Timing parameters for the MG90S servomotor.
 enum {
@@ -28,6 +79,8 @@ enum {
 	kMotorMinValue     = 400,                            // Minimum pulse width (microseconds).
 };
 
+Motor *g_motorInstance = 0;
+
 Motor::Motor()
 	: _currentSeq(0)
 {
@@ -36,6 +89,8 @@ Motor::Motor()
 		MOTOR_DEVICE->PSEL.OUT[chan] = (gMotorPinout[chan] << PWM_PSEL_OUT_PIN_Pos)
 				                  | (PWM_PSEL_OUT_CONNECT_Connected << PWM_PSEL_OUT_CONNECT_Pos);
 	}
+
+	g_motorInstance = this;
 
 	// Set up the PWM peripheral.
 	MOTOR_DEVICE->ENABLE     = (PWM_ENABLE_ENABLE_Enabled << PWM_ENABLE_ENABLE_Pos);
@@ -57,6 +112,9 @@ Motor::Motor()
 		MOTOR_DEVICE->SEQ[seq].ENDDELAY = 0;
 	}
 
+	// Set up a timer for smooth animation.
+	initTimer();
+
 	// Start.
 	MOTOR_DEVICE->TASKS_SEQSTART[_currentSeq] = 1;
 }
@@ -74,3 +132,10 @@ void Motor::setPosition(unsigned motorNum, unsigned pos)
 	_currentSeq = _currentSeq != 0 ? 0 : 1;
 	MOTOR_DEVICE->TASKS_SEQSTART[_currentSeq] = 1;
 }
+
+void Motor::animateTo(unsigned motorNum, unsigned pos)
+{
+	m_motor[motorNum].
+}
+
+#endif // OLD

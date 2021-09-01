@@ -46,6 +46,8 @@ SRC_FILES += \
   $(SDK_ROOT)/components/ble/common/ble_advdata.c \
   $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   $(PROJ_DIR)/tinycpp.cpp \
+  $(PROJ_DIR)/MotorPwm.cpp \
+  $(PROJ_DIR)/MotorTimer.cpp \
   $(PROJ_DIR)/Motor.cpp \
   $(PROJ_DIR)/Timer.cpp \
   $(PROJ_DIR)/BLEUart.cpp \
@@ -88,7 +90,8 @@ INC_FOLDERS += \
   $(SDK_ROOT)/external/fprintf \
 
 # Libraries common to all targets
-LIB_FILES += -lm
+#LIB_FILES += $(SDK_ROOT)/components/toolchain/cmsis/dsp/GCC/libarm_cortexM4lf_math.a # Accelerated FPU library
+LIB_FILES += -lm # Extra math library
 #-lc -lnosys
 
 # Optimization flags
@@ -103,7 +106,7 @@ CFLAGS += -DAPP_TIMER_V2_RTC1_ENABLED
 CFLAGS += -DBOARD_PCA10040
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 #CFLAGS += -DCONFIG_NFCT_PINS_AS_GPIOS
-CFLAGS += -DFLOAT_ABI_HARD
+#CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DNRF52
 CFLAGS += -DNRF52832_XXAA
 CFLAGS += -DNRF52_PAN_74
@@ -113,13 +116,14 @@ CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
 CFLAGS += -Wall -Werror
-CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+#CFLAGS += -DARM_MATH_CM4=1
+#CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 CFLAGS += -fno-builtin -fshort-enums
 
 # C++ flags common to all targets
-CXXFLAGS += $(OPT)
+CXXFLAGS += $(CFLAGS)
 CXXFLAGS += -std=c++11 -std=gnu++11
 CXXFLAGS += -fno-rtti
 CXXFLAGS += -fno-exceptions
@@ -129,12 +133,12 @@ CXXFLAGS += -fno-threadsafe-statics
 ASMFLAGS += -g3
 ASMFLAGS += -mcpu=cortex-m4
 ASMFLAGS += -mthumb -mabi=aapcs
-ASMFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+#ASMFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 ASMFLAGS += -DAPP_TIMER_V2
 ASMFLAGS += -DAPP_TIMER_V2_RTC1_ENABLED
 ASMFLAGS += -DBOARD_PCA10040
 ASMFLAGS += -DCONFIG_GPIO_AS_PINRESET
-ASMFLAGS += -DFLOAT_ABI_HARD
+#ASMFLAGS += -DFLOAT_ABI_HARD
 ASMFLAGS += -DNRF52
 ASMFLAGS += -DNRF52832_XXAA
 ASMFLAGS += -DNRF52_PAN_74
@@ -146,7 +150,7 @@ ASMFLAGS += -DSOFTDEVICE_PRESENT
 LDFLAGS += $(OPT)
 LDFLAGS += -mthumb -mabi=aapcs -L$(SDK_ROOT)/modules/nrfx/mdk -T$(LINKER_SCRIPT)
 LDFLAGS += -mcpu=cortex-m4
-LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+#LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # let linker dump unused sections
 LDFLAGS += -Wl,--gc-sections
 # use newlib in nano version
