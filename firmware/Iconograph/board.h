@@ -6,8 +6,9 @@
 #define _BOARD_H_
 
 // Definitions for the chip itself.
-#include "nrf52.h"
-#include "nrf52_bitfields.h"
+#include "nrf.h"
+//#include "nrf52.h"
+//#include "nrf52_bitfields.h"
 
 // Pinout
 enum Pinout {

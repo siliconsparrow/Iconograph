@@ -8,32 +8,43 @@
 #define PI 3.1415726535
 
 enum {
-	kRodLength1  = 90,   // Length of first rod in mm
-	kRodLength2  = 80,   // Length of second rod in mm
-	kHorizRange  = 130,  // Maximum horizontal range of positions (mm)
-	kHorizOrigin = 0,    // Minimum horizontal position (mm relative to shoulder joint)
-	kVertRange   = 80,   // Maximum vertical range of positions (mm)
-	kVertOrigin  = 30,   // Minimum vertical position (mm relative to shoulder joint)
-	kMotor0min   = 500,  // Minimum position of shoulder motor
-	kMotor0Max   = 1500, // Maximum position of shoulder motor
-	kMotor1min   = 0,    // Minimum position of elbow motor
-	kMotor1max   = 2000, // Maximum position of elbow motor
+	kRodLength1  =  90,   // Length of first rod in mm
+	kRodLength2  =  80,   // Length of second rod in mm
+	kHorizRange  = -130,  // Maximum horizontal range of positions (mm)
+	kHorizOrigin =  0,    // Minimum horizontal position (mm relative to shoulder joint)
+	kVertRange   =  80,   // Maximum vertical range of positions (mm)
+	kVertOrigin  =  30,   // Minimum vertical position (mm relative to shoulder joint)
+	kMotor0min   =  500,  // Minimum position of shoulder motor
+	kMotor0Max   =  1500, // Maximum position of shoulder motor
+	kMotor1min   =  0,    // Minimum position of elbow motor
+	kMotor1max   =  2000, // Maximum position of elbow motor
 };
 
 Iconograph::Iconograph()
 	: _motorNum(0)
 	, _motorPos(0)
+	, _theta(0)
 {
 	_uart.setDelegate(this);
 
-	//Timer::instance()->setPeriodic(250, this);
+	Timer::instance()->setPeriodic(200, this);
 
-	_motor.setPosition(0, Motor::getMaxPosition() / 2);
-	_motor.setPosition(1, Motor::getMaxPosition() / 2);
+	for(unsigned i = 0; i < kNumMotors; i++) {
+		_motor[i] = new Motor(0, i);
+		_motor[i]->moveTo(Motor::kMaxPosition / 2);
+	}
 }
 
 void Iconograph::evtTimer(unsigned param)
 {
+	float r = Motor::kMaxPosition / 2;
+
+	_motor[kMotorElbow]->moveTo(r + (r * sin(_theta)));
+
+	_theta += 3.14159 / 7;
+
+
+	/*
 	_motor.setPosition(_motorNum++, _motorPos);
 
 	if(_motorNum >= kNumMotors) {
@@ -43,6 +54,7 @@ void Iconograph::evtTimer(unsigned param)
 			_motorPos = 0;
 		}
 	}
+	*/
 }
 
 // Called when data is received from the Android app.
@@ -62,6 +74,14 @@ void Iconograph::rxData(const uint8_t *data, unsigned size)
 		cmdXyPosition(data, size);
 		break;
 
+	case 6: // Pen up or down.
+		cmdPenUpDown(data[0] != 0);
+		break;
+
+	case 8: // Reset position.
+		cmdResetPosition();
+		break;
+
 	default:
 		break;
 	}
@@ -70,11 +90,23 @@ void Iconograph::rxData(const uint8_t *data, unsigned size)
 void Iconograph::cmdMotorPosition(const uint8_t *data, unsigned size)
 {
 	unsigned motorNum = data[0] - 1;
-	if(motorNum >= Motor::kMotorChannels) {
+	if(motorNum >= Motor::kMaxMotors) {
 		return;
 	}
 
-	_motor.setPosition(motorNum, ((100 - (unsigned)data[1]) * Motor::getMaxPosition()) / 100);
+	_motor[motorNum]->moveTo(((100 - (unsigned)data[1]) * Motor::kMaxPosition) / 100);
+}
+
+void Iconograph::cmdPenUpDown(uint8_t down)
+{
+	_motor[kMotorPen]->moveTo(down? 1100 : 800);
+}
+
+void Iconograph::cmdResetPosition()
+{
+	_motor[kMotorShoulder]->moveTo(Motor::kMaxPosition / 2);
+	_motor[kMotorElbow]->moveTo(Motor::kMaxPosition / 2);
+	cmdPenUpDown(false);
 }
 
 void Iconograph::cmdXyPosition(const uint8_t *data, unsigned size)
@@ -97,35 +129,38 @@ void Iconograph::cmdXyPosition(const uint8_t *data, unsigned size)
 // Coordinates range from 0 to 65535 and are scaled to the arm's reach.
 void Iconograph::moveTo(uint16_t posX, uint16_t posY)
 {
-	// Scale the coordinates to our printable area.
-	double x = (((double)posX * kHorizRange) / 65535) + kHorizOrigin;
-	double y = (((double)posY * kVertRange) / 65535) + kVertOrigin;
+	// Scale the coordinates to our printable area in millimetres.
+	float x = (((float)posX * kHorizRange) / 65535) + kHorizOrigin;
+	float y = (((float)posY * kVertRange) / 65535) + kVertOrigin;
 
 	// Calculate the distance from the pivot to the coordinates.
-	double d = sqrt((x*x)+(y*y));
+	float d = sqrt((x*x)+(y*y));
 
 	// Calculate the elbow angle.
-	double thElbow = calcOppositeAngle(d, kRodLength1, kRodLength2);
+	float thMid = calcOppositeAngle(d, kRodLength1, kRodLength2);
 
 	// Calculate the shoulder angle.
-	double thMid = calcOppositeAngle(kRodLength1, kRodLength2, d);
+	float thElbow = PI - calcOppositeAngle(kRodLength1, kRodLength2, d);
 
 	// Calculate the angle between the shoulder and the horizontal axis.
-	double thShoulder = PI - atan(y/(-x)) - thMid;
+	float thShoulder = PI - atan(y/(-x)) - thMid;
 
 	// Convert angles into motor positions (0-2000)
-	double motShoulder = (2000 * thShoulder) / PI;
-	double motElbow    = (2000 * (thElbow - PI)) / PI;
+	float motShoulder = 2000 - ((2000 * thShoulder) / PI);
+	float motElbow    =  ((4000 * thElbow) / PI) - 1500;
 	if(motShoulder < kMotor0min || motShoulder > kMotor0Max || motElbow < kMotor1min || motElbow > kMotor1max) {
 		return;
 	}
-	_motor.setPosition(0, motShoulder);
-	_motor.setPosition(1, motElbow);
+	_motor[kMotorShoulder]->moveTo(motShoulder);
+	_motor[kMotorElbow]->moveTo(motElbow);
 }
 
 // Use the law of cosines to calculate one angle of a triangle when
 // given the length of all three sides.
-double Iconograph::calcOppositeAngle(double a, double b, double c)
+float Iconograph::calcOppositeAngle(float a, float b, float c)
 {
-	return acos(((a*a)+(b*b)-(c*c)) / (2 * a * b));
+	float n = (a*a)+(b*b)-(c*c);
+	float d = 2 * a * b;
+	float l = n/d;
+	return acos(l);
 }

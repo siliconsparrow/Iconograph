@@ -23,20 +23,27 @@ protected:
 
 private:
 	enum {
+		kMotorShoulder,
+		kMotorElbow,
+		kMotorPen,
+
 		kNumMotors = 3,
 	};
 
-	Motor  _motor;
+	Motor   *_motor[kNumMotors];
 	BLEUart _uart;
 
 	unsigned _motorNum; // TEST
 	unsigned _motorPos; // TEST
+	float    _theta;
 
 	void cmdMotorPosition(const uint8_t *data, unsigned size);
 	void cmdXyPosition(const uint8_t *data, unsigned size);
+	void cmdPenUpDown(uint8_t up);
+	void cmdResetPosition();
 	void moveTo(uint16_t posX, uint16_t posY);
 
-	static double calcOppositeAngle(double a, double b, double c);
+	static float calcOppositeAngle(float a, float b, float c);
 };
 
 #endif // ICONOGRAPH_H_

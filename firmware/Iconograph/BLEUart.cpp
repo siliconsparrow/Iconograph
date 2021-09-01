@@ -42,6 +42,34 @@
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
+/* Resource reserved by Softdevice S112
+ *
+ * CLOCK
+ * POWER
+ * BPROT
+ * RADIO
+ * TIMER0
+ * RTC0
+ * TEMP
+ * RNG
+ * ECB
+ * CCM
+ * AAR
+ * EGU1/SWI1
+ * EGU5/SWI5
+ * NVMC
+ * FICR
+ * UICR
+ * NVIC
+ *
+ * SWI Channels 0, 1, 2, 3, 4 and 5
+ * SVC numbers 0x10-0xFF
+ *
+ * Interrupt priorities 0, 1 and 4
+ *
+ */
+
+
 static ble_uuid_t m_adv_uuids[]          =                                          /**< Universally unique service identifier. */
 {
     {BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}
